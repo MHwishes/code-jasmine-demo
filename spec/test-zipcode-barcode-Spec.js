@@ -1,5 +1,6 @@
 'use strict';
-const main=require('../main/main.js');
+const main=require('../main/zipcode-barcode1.js');
+
 describe('printBarcode', () => {
 
     let correctZipCodes;
@@ -51,6 +52,7 @@ describe('printBarcode', () => {
     });
 
     it('buildBarcode',()=>{
+      //  const digitBarcode=fixture.loadBarcode();
         const expectBarcode='||:|:::|:|:|:::|:::||::||::|:|:|';
         const barcode=main.buildBarcode(['9', '5', '7', '1', '3', '5' ]);
         expect(expectBarcode).toEqual(barcode);
