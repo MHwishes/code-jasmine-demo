@@ -1,52 +1,59 @@
 'use strict';
 const fixture = require('../spec/fixture.js');
 
-function printBarcode(zipCode) {
-    const formatZipCode = checkZipCode(zipCode);
-    if (formatZipCode === false) {
-        console.log("非法邮编");
-        return;
+function zipCodeToBarcode(zipCode) {
+    if (!validateZipCode(zipCode)) {
+        return {success: false, error: 'invalid_zipcode'}
     }
-    const checkCodes = buildCodesCheckBit(formatZipCode);
-    const barcode = buildBarcode(checkCodes);
-
-    console.log(barcode);
+    const zipCodeWithoutDash = formatZipCode(zipCode);
+    const zipcodeInDigitArray = toDigitArray(zipCodeWithoutDash);
+    const checkDigit = calculateCheckDigit(zipcodeInDigitArray);
+    const barcode = toBarcode(zipcodeInDigitArray.concat(checkDigit));
+    const value = formatBarcode(barcode);
+    return {success: true, value};
 }
 
-function checkZipCode(zipCode) {
+function validateZipCode(zipCode){
 
-    const formatZipCode = zipCode.replace(/-/g, '');
-    const length = formatZipCode.length;
-
-    return length === 5 || length === 9 && isNaN(parseInt(formatZipCode)) === true ? formatZipCode : false;
+    return /^\d{5}$/.test(zipCode)
+        || /^\d{9}$/.test(zipCode)
+        || /^\d{5}-\d{4}/.test(zipCode);
 }
 
-function buildCodesCheckBit(formatZipCode) {
-    const checkCodes = formatZipCode.split('');
-    const checkBit = checkCodes.map(checkCode=>parseInt(checkCode)).reduce((pre, cur)=>pre + cur) % 10;
-    if (checkBit === 0) {
-        checkCodes.push('0');
-    } else {
-        checkCodes.push((10 - checkBit).toString());
-    }
 
-    return checkCodes;
+function formatZipCode(zipCode) {
+
+    return zipCode.replace('-','');
 }
 
-function buildBarcode(checkCodes) {
-    const allBarcodes = fixture.loadBarcode();
-    const barcodeArray = [];
-    for (let checkCode of checkCodes) {
-        const barcodeSelected = allBarcodes.find(allBarcode=>allBarcode.digit === checkCode);
-        barcodeArray.push(barcodeSelected.digitBarcode);
-    }
+function toDigitArray(zipCodeWithoutDash) {
+    return zipCodeWithoutDash.split('').map(c=>parseInt(c));
+}
 
-    return `|${barcodeArray.join('')}|`;
-};
+function calculateCheckDigit(zipCodeInDigitArray) {
 
-module.exports = {
-    checkZipCode: checkZipCode,
-    buildCodesCheckBit: buildCodesCheckBit,
-    buildBarcode: buildBarcode,
-    printBarcode: printBarcode
+    return (10-sum(zipCodeInDigitArray)%10)%10;
+}
+function sum(digts) {
+
+    return digts.reduce((a,b)=>a+b);
+}
+
+function toBarcode(zipCode){
+
+    return zipCode.map(i=>fixture.table[i]).join('');
+}
+
+function formatBarcode(barcode) {
+
+    return `|${barcode}|`;
+}
+
+module.exports={zipCodeToBarcode:zipCodeToBarcode,
+    validateZipCode:validateZipCode,
+    formatZipCode:formatZipCode,
+    toDigitArray:toDigitArray,
+    calculateCheckDigit:calculateCheckDigit,
+    toBarcode:toBarcode,
+    formatBarcode:formatBarcode
 };

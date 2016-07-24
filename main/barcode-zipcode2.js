@@ -1,81 +1,68 @@
 'use strict';
-const  fixture=require('../spec/fixture.js');
-function printZipCodes(barcodes) {
-    const isBarcode = checkBarcode(barcodes);
+const fixture = require('../spec/fixture.js');
 
-    if (isBarcode === false) {
-        console.log('不能转换编码');
-        return;
+function barcodeToZipcode(barcode) {
+    if (!validateBarcode(barcode)) {
+        return {success: false, error: 'invalid_barcode'};
     }
-    const barcodeArray = buildBarcodeSplit(barcodes);
-    const codeArray = buildCodeCheck(barcodeArray);
+    const barcodeWithoutBorder = removeBorder(barcode);
 
-    if (codeArray === false) {
-        console.log('不能转换编码');
-        return;
+    const digits = barcodeToDigits(barcodeWithoutBorder);
+
+    if (!valiateCheckdigits(digits)) {
+        return {success: false, error: 'check_digit_not_match'};
     }
-    const zipCode = buildZipCode(codeArray);
+    const zipCode = toZip(digits);
 
-    console.log(zipCode);
+    const formattedZipCode = align(zipCode);
+
+    return {success: true, value: formattedZipCode};
 }
 
-function checkBarcode(barcodes) {
-    if (barcodes.length === 32 || barcodes.length === 52) {
-        const arrayBarcodes = barcodes.split('');
-        for (let arrayBarcode of arrayBarcodes) {
-            if (arrayBarcode != ':' && arrayBarcode != '|') {
-                return false;
-            }
-        }
+function validateBarcode(barcode) {
 
-        return barcodes;
-    }
-    else {
+    const length = barcode.length;
 
-        return false;
-    }
+    return barcode.match(/^\|[:|]+\|$/) && [32, 52].some(i=>i === length);
 }
 
-function buildBarcodeSplit(barcodes) {
-    const barcodeSplitedArray = [];
+function removeBorder(barcode) {
+    return barcode.slice(1, -1);
+}
 
-    const newBarcodes = barcodes.substring(1, barcodes.length - 1);
+function barcodeToDigits(barcodeWithoutBorder) {
 
-    for(let index=0;index<newBarcodes.length;index+=5){
-        barcodeSplitedArray.push(newBarcodes.substring(index,index+5));
-    }
-    
-    return barcodeSplitedArray;
+    return barcodeWithoutBorder.match(/.{1,5}/g).map(str=>fixture.table.indexOf(str));
+}
+
+function valiateCheckdigits(digits) {
+
+    return sum(digits) % 10 === 0;
 }
 
 
-function buildCodeCheck(barcodeArray) {
-    const allBarcodes = fixture.loadBarcode();
-    const codeArray = [];
-    for (let barcode of barcodeArray) {
-        const barcodeSelected = allBarcodes.find(allBarcode=>allBarcode.digitBarcode === barcode);
-        codeArray.push(barcodeSelected.digit);
-    }
-    const rightCode = (codeArray.map(code=>parseInt(code)).reduce((pre, nex)=>pre + nex)) % 10;
-    return rightCode === 0 ? codeArray : false;
+function sum(digits) {
+    return digits.reduce((a, b)=>a + b);
 }
 
 
+function toZip(digits) {
+    return digits.join('').slice(0, -1);
+}
 
-function buildZipCode(codeArray) {
-    const newZipCode = codeArray.map(code=>parseInt(code)).join('').toString();
-    const zipCode = newZipCode.substring(0, newZipCode.length - 1);
-    if (zipCode.length === 5) {
-        return zipCode;
-    } else {
-        return `${zipCode.substring(0, 5)}-${zipCode.substring(5)}`;
+function align(zipCode) {
+    if (zipCode.length === 9) {
+        return `${zipCode.slice(0, 5)}-${zipCode.slice(5)}`
     }
+    return zipCode;
 }
 
 module.exports = {
-    checkBarcode: checkBarcode,
-    buildBarcodeSplit: buildBarcodeSplit,
-    buildCodeCheck: buildCodeCheck,
-    buildZipCode: buildZipCode,
-    printZipCodes: printZipCodes
+    barcodeToZipcode: barcodeToZipcode,
+    validateBarcode: validateBarcode,
+    removeBorder: removeBorder,
+    barcodeToDigits: barcodeToDigits,
+    valiateCheckdigits: valiateCheckdigits,
+    toZip: toZip,
+    align: align
 };
